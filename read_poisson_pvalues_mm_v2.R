@@ -1,10 +1,8 @@
 #!/usr/bin/env Rscript
 
-##Mike Mariani UVM 2021
+##Mike Mariani Frietze Lab UVM 2021
 
-##Derived from EBV 4C paper by Kim et al. Nature, 2020.
-
-##Updated version 2, 01/20/2021
+##Updated version 2, 01/22/2021
 ##This should do a better job with iterating, 
 ##and also handles the ends of the chromosomes which
 ##will be binned at under 10kbp
@@ -22,14 +20,14 @@
 ##Note the below only outputs calculations for a 
 ##window if at least one read is in that region, 
 ##thus it will not output a 10kb regions of all zeros 
-##to the output. 
+## to the output. 
 
 library(data.table)
 library(dplyr)
 library(Rsamtools)
 library(parallel)
 library(pbmcapply)
-library(karyoploteR)
+##library(karyoploteR) ##Error loading karyoploteR, may need re-install
 
 setDTthreads(threads=16)
 set.seed(seed=1)
@@ -52,7 +50,7 @@ calc_prob_mm <- function(counts.now,mean){
 
 poisson_prob_mm_v2 <- function(bam.file, read.length, out.dir){
 
-##print(paste0("processing bam file ",bam.file," ... "))
+print(paste0("processing bam file ",bam.file," ... "))
   
 ##bam.file = bam.files[[15]]
 ##read.length=60
@@ -137,13 +135,13 @@ for(i in 1:nrow(hg38.chrom.sizes))
       ##stop("error")
       ##report status:
      if(hg38.chrom.sizes$size[i]==(j+ceiling(remainder)-1)){
-       ##print(paste0("chrom size: ",
-       ##             hg38.chrom.sizes$size[i], 
-       ##             " and iterator + remainder: ",
-       ##             (j+ceiling(remainder)-1),
-       ##             " should be the same number. Is this true? ... ",
-       ##             (hg38.chrom.sizes$size[i]==(j+ceiling(remainder)-1))
-       ##            )
+       print(paste0("chrom size: ",
+                    hg38.chrom.sizes$size[i], 
+                    " and iterator + remainder: ",
+                    (j+ceiling(remainder)-1),
+                    " should be the same number. Is this true? ... ",
+                    (hg38.chrom.sizes$size[i]==(j+ceiling(remainder)-1))
+                   )
        )
      }else{stop("serious eror, window iteration is not matching chroms sizes")}
       
@@ -228,16 +226,35 @@ data.table::fwrite(x=poisson.final[,c(1,2,3,5)],
                    nThread = 16,
                    showProgress=FALSE)
 
+##return(poisson.final)
+
 }
+
+##bam.files <- list.files(path="/slipstream/home/mmariani/projects/hhv6_detection/hhv6a_illumina_mm1_hg38_aligned_bowtie2_for_nature_method",
+##                        pattern="_L002_R1_001.sorted.mapped.bam$",
+##                        full.names = TRUE)
+##out.dir="/slipstream/home/mmariani/projects/hhv6_detection/mm1_illumina_nature_method_peaks/poisson_v2_bedgraphs"
+##lapply(bam.files,
+##       poisson_prob_mm_v2,
+##       read.length=60,
+##       out.dir=out.dir)
+
+##bam.check <- scanBam(bam.files[[1]])
+##Look at the fields:
+##names(bam.check[[1]])
+##bam.check[[1]][[5]] ##left-most mapping position
+##bam.check[[1]][[7]] ##mapq score
 
 ##For batching:
 bam.files <- list.files(path=args[1],
                         pattern=args[2],
                         full.names = TRUE)
 
+print(bam.files)
 lapply(bam.files,
-       poisson_prob_mm_v2,
-       read.length=args[3]
-       out.dir=args[4]
+	   poisson_prob_mm_v2,
+	   read.length=args[3], ##minus viewpoint+enzyme *usually minus 20bp
+	   out.dir=args[4]
        )
-	   
+				  
+##saveRDS(outputs,paste0(args[4],"/","poisson.bdg.object.RDS"))
